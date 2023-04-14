@@ -10,7 +10,8 @@ Features
 
 Installation
 
-    Clone the repository or download the source code
+    Clone the repository or download the source code 
+      git clone git@github.com:joshfryart/LangTranslate.git
     Install the required packages:
 
 pip install -r requirements.txt
