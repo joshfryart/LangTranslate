@@ -13,14 +13,11 @@ Installation
     Clone the repository or download the source code 
       git clone git@github.com:joshfryart/LangTranslate.git
     Install the required packages:
-
-pip install -r requirements.txt
+      pip install -r requirements.txt
 
 Usage
 
 Run the LangTranslate tool:
-
-css
 
 python main.py
 
@@ -60,7 +57,7 @@ LangTranslate currently supports the following languages:
 
 Contributing
 
-Feel free to submit pull requests for bug fixes or new features. All contributions are welcome!
+Feel free to submit pull requests for bug fixes or new features. All contributions are welcome! I don't know what I am doing. I am @joshfryart on twitter.
 License
 
 This project is released under the MIT License. See the LICENSE file for more information.
