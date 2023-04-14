@@ -1,0 +1,4 @@
+rich
+pydantic
+translate
+typing
