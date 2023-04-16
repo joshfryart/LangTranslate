@@ -1,69 +1,104 @@
-from typing import Union
-from pydantic import BaseModel
-from translate import Translator
+from textblob import TextBlob
+from RapidAPI import RapidAPIAPIWrapper
+import click
 
-class InvalidLanguageCodeError(Exception):
-    """A custom exception class for invalid language codes."""
 
-# Define the tool class
-class LangTranslateAPIWrapper(BaseModel):
-    output_lang: str
+def translate(input, source, target, rapidapi_wrapper):
+    # Prepare the RapidAPIAPIWrapper
+    rapidapi_wrapper.config["apiKey"] = "APIKEY"
+    rapidapi_wrapper.config["host"] = "HOSTURL"
     
-    def run(self, input_text: str) -> str:
-        """
-        Translates the input text to the specified output language.
-        
-        Args:
-            input_text: The text to be translated.
-            
-        Returns:
-            The translated text in the specified output language or an error message.
-        """
-        # Validate input
-        if not input_text.strip():
-            return "Input text is empty. Please provide some text to translate."
+    # Update the run method in RapidAPIAPIWrapper
+    def run(self, query, source, target):
+        headers = self._get_headers()
+        params = self._get_params(query, source, target)
+        url = self._get_base_url()
+        method = self._get_method()
+
         try:
-            # Call API to translate text
-            translator = Translator(to_lang=self.output_lang)
-            output_text = translator.translate(input_text)
-            return output_text
-        except ValueError:
-            return f"Invalid output language: {self.output_lang}. Please provide a valid ISO 639-1 language code."
-        except Exception as e:
-            return f"Error occurred during translation: {str(e)}"
+            response = requests.request(method, url, headers=headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as error:
+            return self._handle_error(error)
 
-class LANGTOOL:
-    def __init__(self, api_wrapper: LangTranslateAPIWrapper):
-        self.api_wrapper = api_wrapper
+    # Update the _get_headers method in RapidAPIAPIWrapper
+    def _get_headers(self):
+        headers = {
+            "x-rapidapi-key": self.config["apiKey"],
+            "x-rapidapi-host": self.config["host"]
+        }
+        return headers
 
-    def run(self, query: str) -> str:
-        return self._run(query)
+    # Update the _get_params method in RapidAPIAPIWrapper
+    def _get_params(self, query, source, target):
+        params = {
+            "q": query,
+            "source": source,
+            "target": target
+        }
+        return params
     
-    async def arun(self, query: str) -> str:
-        return await self._arun(query)
-    
-    def _run(self, query: str) -> str:
-        raise NotImplementedError("The _run method should be implemented in the derived class.")
-    
-    async def _arun(self, query: str) -> str:
-        raise NotImplementedError("The _arun method should be implemented in the derived class.")
-        
-class LangTranslateRun(LANGTOOL):
-    """LangTranslate - a standalone module that automatically translates text from one language to another."""
+    # Update the _get_base_url method in RapidAPIAPIWrapper
+    def _get_base_url(self):
+        return f"https://{self.config['host']}/language/translate/v2"
 
-    name = "LangTranslate"
-    description = (
-        """LangTranslate is a standalone module that automatically translates text from one language to another. 
-        It takes input text and an output language as inputs and returns the translated text in the specified language.
-        """
-    )
-    final_answer_format = "Translated Text: {output_text}"
-
-    def _run(self, query: str) -> str:
-        """Use the LangTranslate tool."""
-        output_text = self.api_wrapper.run(query)
-        return f"Translated Text: {output_text}"
+    # Perform the translation
+    query = input
+    response = rapidapi_wrapper.run(source, target, input)
     
-    async def _arun(self, query: str) -> str:
-        """Use the LangTranslate tool asynchronously."""
-        raise NotImplementedError("LangTranslateRun does not support async")
+    translated_text = response['data']['translations'][0]['translatedText']
+
+    return translated_text
+
+
+
+@click.command()
+@click.option('--input', prompt='Enter input text', help='Input text to translate')
+@click.option('--source', prompt='Enter source language code', help='Source language code')
+@click.option('--target', prompt='Enter target language code', help='Target language code')
+@click.option('--output', prompt='Enter output format', help='Output format')
+@click.option('--save', prompt='Save to file? (y/n)', help='Save result to file?')
+def process(input, source, target, output, save):
+    rapidapi_key = "9ab76486aemsh6ff069083262441p1a2936jsn35f34234c26b"
+    rapidapi_host = "google-translate1.p.rapidapi.com"
+    rapidapi_wrapper = RapidAPIAPIWrapper(rapidapi_key, rapidapi_host)
+
+    try:
+        translated_text = translate(input, source, target, rapidapi_wrapper)
+        polarity, subjectivity = analyze_sentiment(translated_text)
+
+        click.echo(f'Sentiment Polarity: {polarity}')
+        click.echo(f'Sentiment Subjectivity: {subjectivity}')
+
+        if save.lower() == 'y':
+            save_to_file(translated_text, output)
+
+        click.echo(translated_text)
+
+    except Exception as e:
+        click.echo(f'Error: {str(e)}')
+
+
+def analyze_sentiment(translated_text):
+    try:
+        blob = TextBlob(translated_text)
+        polarity = blob.sentiment.polarity
+        subjectivity = blob.sentiment.subjectivity
+        return polarity, subjectivity
+
+    except Exception as e:
+        click.echo(f'Error: {str(e)}')
+
+
+def save_to_file(translated_text, output_file):
+    try:
+        with open(output_file, 'w') as file:
+            file.write(translated_text)
+
+    except Exception as e:
+        click.echo(f'Error: {str(e)}')
+
+
+if __name__ == '__main__':
+    process()

@@ -1,4 +1,5 @@
-rich
-pydantic
-translate
-typing
+click
+google-cloud-translate
+textblob
+docx2txt
+requests
